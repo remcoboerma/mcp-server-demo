@@ -1,0 +1,29 @@
+networks:
+  broker:
+    name: broker
+    external: true
+
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: unless-stopped
+    environment:
+      - MCP_SERVER_NAME=${PROJECT}
+    expose:
+      - 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT}-secure.rule=Host(`${PROJECT}.${HOSTINGDOMAIN}`)"
+      - "traefik.http.routers.${PROJECT}-secure.tls=true"
+      - "traefik.http.routers.${PROJECT}-secure.entrypoints=web-secured"
+      - "traefik.http.routers.${PROJECT}-secure.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=broker"
+    networks:
+      - broker
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
