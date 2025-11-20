@@ -11,6 +11,10 @@ services:
     restart: unless-stopped
     environment:
       - MCP_SERVER_NAME=${PROJECT}
+      - FASTMCP_LOG_LEVEL=DEBUG
+    volumes:
+      - ./data:/data
+      - ./server.py:/app/server.py:ro
     expose:
       - 8000
     labels:

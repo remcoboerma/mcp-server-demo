@@ -5,9 +5,6 @@ RUN uvenv install --no-cache fastmcp
 
 WORKDIR /app
 
-# Copy server
-COPY server.py .
-
 EXPOSE 8000
 
 # Streamable HTTP transport on 0.0.0.0:8000
