@@ -7,6 +7,38 @@ import sqlite3
 logger = logging.getLogger(__name__)
 mcp = FastMCP("democalculator")
 
+DB_PATH = Path("/data/captains_log.db")
+
+def init_database():
+    """Initialiseer database en tabellen bij startup"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS captains_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            username TEXT NOT NULL,
+            projectname TEXT NOT NULL,
+            message TEXT NOT NULL
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS high_watermarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tablename TEXT NOT NULL,
+            username TEXT NOT NULL,
+            projectname TEXT NOT NULL,
+            watermark_id INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(tablename, username, projectname)
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+    logger.info("Database initialized")
+
 @mcp.tool()
 def add(a: float, b: float) -> float:
     """Tel twee getallen op"""
@@ -26,8 +58,7 @@ def random_number(min_val: int = 1, max_val: int = 100) -> int:
 @mcp.tool()
 def projectnames_for_username(username: str) -> list[str]:
     """Geef alle projectnamen voor een gebruiker"""
-    db_path = Path("/data/captains_log.db")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     cursor.execute(
@@ -51,21 +82,8 @@ def data_for_new_report(username: str, projects: list[str]) -> dict:
     Returns:
     - Dict met per project de nieuwe entries sinds laatste watermark
     """
-    db_path = Path("/data/captains_log.db")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Maak high_watermarks tabel als die nog niet bestaat
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS high_watermarks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tablename TEXT NOT NULL,
-            username TEXT NOT NULL,
-            projectname TEXT NOT NULL,
-            watermark_id INTEGER NOT NULL DEFAULT 0,
-            UNIQUE(tablename, username, projectname)
-        )
-    """)
     
     result = {}
     
@@ -128,21 +146,8 @@ def captains_log(username: str, projectname: str, message: str) -> str:
     - projectname: Naam van het project (MOET door gebruiker opgegeven worden)
     - message: Het log bericht
     """
-    db_path = Path("/data/captains_log.db")
-    
-    # Maak connectie en tabel als die nog niet bestaat
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS captains_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            username TEXT NOT NULL,
-            projectname TEXT NOT NULL,
-            message TEXT NOT NULL
-        )
-    """)
     
     # Insert log entry
     cursor.execute(
@@ -165,5 +170,6 @@ def captains_log(username: str, projectname: str, message: str) -> str:
     return log_entry
 
 if __name__ == "__main__":
+    init_database()
     logger.info(f"Server name: {mcp.name}")
     mcp.run()
